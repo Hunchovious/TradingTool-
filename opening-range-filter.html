@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opening Range Filter</title>
+<style>
+  :root{
+    --paper:#F1F4F3; --card:#FFFFFF; --ink:#16232B; --muted:#6E7F86;
+    --line:#D3DBD9; --go:#2F6B4F; --go-soft:#DCE9E1;
+    --no:#9E3B26; --no-soft:#F2DED8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:400 16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  .num{font-variant-numeric:tabular-nums}
+  header{padding:24px 20px 14px;max-width:900px;margin:0 auto}
+  h1{font:600 26px/1.15 Georgia,"Times New Roman",serif;margin:0 0 5px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin:0;max-width:64ch}
+  main{max-width:900px;margin:0 auto;padding:0 20px 60px}
+
+  .tools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:13px}
+  button{appearance:none;font:600 13px/1 inherit;cursor:pointer;border-radius:2px}
+  .btn{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:8px 12px}
+  .btn:active{background:#EAEFEE}
+  .savenote{font-size:12.5px;color:var(--muted)}
+  .savenote.warn{color:var(--no)}
+  #copybox{display:none;width:100%;margin-top:10px;height:150px;padding:9px;
+    border:1px solid var(--line);border-radius:2px;background:var(--card);color:var(--ink);
+    font:400 13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  .setup{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:15px 16px 8px;margin-bottom:22px}
+  .setup h2,.rules h2{font:600 15px/1.3 Georgia,serif;margin:0 0 4px}
+  .hint{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:66ch}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:0 8px 6px 0;border-bottom:1px solid var(--line)}
+  td{padding:4px 8px 4px 0;border-bottom:1px solid #EDF1F0}
+  td:first-child{font-weight:600;font-size:14.5px;width:56px}
+  input{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:2px;
+    background:#FBFCFC;color:var(--ink);font:400 15px/1.2 inherit;font-variant-numeric:tabular-nums}
+  input:focus{outline:2px solid var(--go);outline-offset:1px;border-color:var(--go)}
+  .w-adr{max-width:74px} .w-or{max-width:96px} .w-rv{max-width:62px}
+
+  #cards{display:flex;flex-direction:column}
+  .card{background:var(--card);border:1px solid var(--line);border-left:4px solid #9BB0AE;
+    border-radius:3px;padding:14px 16px;margin-bottom:11px}
+  .top{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:11px}
+  .tk{font:600 20px/1 inherit}
+  .meta{color:var(--muted);font-size:13px}
+  .stamp{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .flag{background:#FBF2D9;color:#7A5E12;font-size:12px;padding:2px 7px;border-radius:2px;font-weight:600}
+  .status{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:2px;overflow:hidden;align-self:center}
+  .status button{border:0;border-left:1px solid var(--line);background:#FBFCFC;color:var(--muted);padding:8px 11px}
+  .status button:first-child{border-left:0}
+  .status button.on{background:var(--ink);color:#fff}
+  .status button:focus-visible{outline:2px solid var(--go);outline-offset:-2px}
+
+  .win{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
+  .w .lab{font-size:12px;color:var(--muted);margin-bottom:1px}
+  .w .val{font:600 19px/1.25 inherit;font-variant-numeric:tabular-nums}
+  .w .val.dead{color:var(--muted);font-weight:400;font-size:15px}
+
+  .bar{position:relative;height:30px;background:var(--no-soft);border-radius:2px;overflow:hidden}
+  .zone{position:absolute;top:0;bottom:0;background:var(--go-soft)}
+  .tickmark{position:absolute;top:0;bottom:0;width:2px;background:var(--ink)}
+  .barlabs{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:3px}
+
+  .check{margin-top:12px;padding-top:11px;border-top:1px solid #EDF1F0;
+    display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap}
+  .check label{font-size:12px;color:var(--muted);display:block;margin-bottom:2px}
+  .check input{max-width:88px}
+  .verdict{padding:8px 14px;border-radius:2px;font-weight:600;font-size:15px;white-space:nowrap}
+  .verdict.pass{background:var(--go-soft);color:var(--go)}
+  .verdict.fail{background:var(--no-soft);color:var(--no)}
+  .why{font-size:13px;color:var(--no);flex-basis:100%;margin-top:1px}
+  .stopline{flex-basis:100%;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);
+    font-size:14.5px;font-variant-numeric:tabular-nums}
+  .stopline b{color:var(--no);font-size:17px}
+  .stopline .sep{color:var(--muted);margin:0 9px}
+
+  .card.thin{border-left-color:#C9A227}
+  .card.st-in{border-left-color:var(--go);border-left-width:6px}
+  .card.st-done{border-left-color:var(--line);background:#FAFBFB}
+  .card.st-done .win,.card.st-done .bar,.card.st-done .barlabs,.card.st-done .check{display:none}
+  .card.st-done .top{margin-bottom:0}
+  .card.st-done .tk,.card.st-done .meta{color:var(--muted)}
+
+  .rules{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:15px 17px;margin-top:26px}
+  .rules ul{margin:9px 0 0;padding:0;list-style:none}
+  .rules li{padding:7px 0 7px 24px;border-bottom:1px solid #EDF1F0;font-size:14.5px;position:relative}
+  .rules li:last-child{border-bottom:0}
+  .rules li::before{content:"";position:absolute;left:5px;top:14px;width:7px;height:7px;
+    border:1.5px solid var(--muted);border-radius:50%}
+  .rules b{font-weight:600}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:20px;max-width:66ch}
+
+  @media (max-width:600px){
+    body{font-size:15px}
+    header{padding:18px 14px 10px} main{padding:0 14px 50px}
+    .setup{padding:12px 11px 6px} .card{padding:12px 12px}
+    td{padding:3px 5px 3px 0} th{padding:0 5px 5px 0;font-size:11px}
+    td:first-child{width:44px;font-size:13.5px}
+    input{padding:9px 6px;font-size:16px}
+    .w-adr{max-width:56px} .w-or{max-width:78px} .w-rv{max-width:48px}
+    .win{gap:14px} .w .val{font-size:17px}
+    .check input{max-width:76px}
+    .top{gap:8px}
+    .status{margin-left:0;flex-basis:100%}
+    .status button{flex:1;padding:10px 0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Opening range filter</h1>
+  <p class="sub">Read each 9:30&ndash;9:35 candle high and low off the chart. Windows, strike band and stop price come out the other side. Everything you type is kept until you start a new day.</p>
+  <div class="tools">
+    <button class="btn" id="newday">Start a new day</button>
+    <button class="btn" id="copy">Copy the day&rsquo;s inputs</button>
+    <span class="savenote" id="savenote"></span>
+  </div>
+  <textarea id="copybox" readonly></textarea>
+</header>
+
+<main>
+  <section class="setup">
+    <h2>9:35 input</h2>
+    <p class="hint">ADR carries over between days; the range and volume fields clear each morning. RVOL is optional: under 1.5 the name isn&rsquo;t in play and gets flagged.</p>
+    <table>
+      <thead><tr><th>Ticker</th><th>ADR %</th><th>OR high</th><th>OR low</th><th>RVOL</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+
+  <div id="cards"></div>
+
+  <section class="rules">
+    <h2>Before the order goes in</h2>
+    <ul>
+      <li><b>0DTE.</b> Premium $0.30&ndash;$0.60, five contracts.</li>
+      <li><b>Set the stop as an order when you enter</b>, not as a decision for later.</li>
+      <li><b>Enter a candle after confirmation</b>, not on the extension.</li>
+      <li><b>Marked daily level overhead?</b> Check before a long.</li>
+    </ul>
+  </section>
+
+  <p class="foot">Windows are the 30&ndash;70% band of one ADR from the opening-range extreme; strikes inside &plusmn;1 ADR; stop at &minus;33% of fill. Drawn from 42 scored trades, 08/10&ndash;08/27.</p>
+</main>
+
+<script>
+var TICKERS=[["TSLA",3.3],["NVDA",3.5],["AMD",3.4],["PLTR",4.5],["AMZN",2.3],
+             ["META",1.9],["MSFT",1.5],["AAPL",2.0],["SPY",0.8],["GOOG",2.2]];
+var LO=0.30, HI=0.70, STOP=0.33;
+var STORE='orf-state-v2';
+var RANK={"in":0,"watch":1,"done":2};
+var DAYFIELDS=['orh','orl','rv','px','k','prem','status','stamp'];
+
+var rowsEl=document.getElementById('rows'),
+    cardsEl=document.getElementById('cards'),
+    noteEl=document.getElementById('savenote'),
+    copyBox=document.getElementById('copybox');
+var S={};
+
+TICKERS.forEach(function(t){
+  S[t[0]]={adr:t[1],orh:'',orl:'',rv:'',px:'',k:'',prem:'',status:'watch',stamp:''};
+});
+
+/* ---------- day + clock, in exchange time ---------- */
+function nyDay(){
+  try{
+    return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',
+      year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  }catch(e){ return new Date().toISOString().slice(0,10); }
+}
+function nyClock(){
+  try{
+    return new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
+      hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
+  }catch(e){ return ''; }
+}
+
+/* ---------- storage ---------- */
+var storageOK=(function(){
+  try{ localStorage.setItem('__orf','1'); localStorage.removeItem('__orf'); return true; }
+  catch(e){ return false; }
+})();
+
+var saveTimer=null;
+function save(){
+  if(!storageOK) return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(function(){
+    try{
+      localStorage.setItem(STORE,JSON.stringify({day:nyDay(),saved:nyClock(),s:S}));
+      setNote('Saved '+nyClock()+' ET');
+    }catch(e){ storageOK=false; setNote('Storage stopped working. Copy your inputs.',true); }
+  },300);
+}
+
+function load(){
+  if(!storageOK){ setNote('This browser is blocking storage here, so nothing will be kept. See the note below.',true); return; }
+  var raw=null;
+  try{ raw=localStorage.getItem(STORE); }catch(e){}
+  if(!raw){ setNote('Nothing saved yet'); return; }
+  var d=null;
+  try{ d=JSON.parse(raw); }catch(e){}
+  if(!d||!d.s){ setNote('Nothing saved yet'); return; }
+  var sameDay=(d.day===nyDay());
+  for(var tk in S){
+    if(!d.s[tk]) continue;
+    if(d.s[tk].adr!==undefined&&d.s[tk].adr!=='') S[tk].adr=d.s[tk].adr;
+    if(sameDay){
+      DAYFIELDS.forEach(function(f){
+        if(d.s[tk][f]!==undefined) S[tk][f]=d.s[tk][f];
+      });
+      if(!S[tk].status) S[tk].status='watch';
+    }
+  }
+  setNote(sameDay ? ('Restored from '+(d.saved||'earlier')+' ET') : ('New day. ADR kept, '+d.day+' cleared.'));
+}
+
+function setNote(msg,warn){
+  noteEl.textContent=msg;
+  noteEl.className='savenote'+(warn?' warn':'');
+}
+
+/* ---------- input table ---------- */
+function buildRows(){
+  rowsEl.innerHTML='';
+  TICKERS.forEach(function(t){
+    var tk=t[0], s=S[tk];
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+tk+'</td>'+
+      '<td><input class="num w-adr" inputmode="decimal" data-t="'+tk+'" data-f="adr" value="'+s.adr+'"></td>'+
+      '<td><input class="num w-or" inputmode="decimal" data-t="'+tk+'" data-f="orh" value="'+s.orh+'" placeholder="high"></td>'+
+      '<td><input class="num w-or" inputmode="decimal" data-t="'+tk+'" data-f="orl" value="'+s.orl+'" placeholder="low"></td>'+
+      '<td><input class="num w-rv" inputmode="decimal" data-t="'+tk+'" data-f="rv" value="'+s.rv+'" placeholder="&mdash;"></td>';
+    rowsEl.appendChild(tr);
+  });
+}
+
+/* ---------- geometry ---------- */
+function f(n,d){ return Number(n).toFixed(d===undefined?2:d); }
+
+function geom(tk){
+  var s=S[tk], adr=parseFloat(s.adr);
+  var a=parseFloat(s.orh), b=parseFloat(s.orl);
+  if(!adr||isNaN(a)||isNaN(b)||a<=0||b<=0) return null;
+  var orh=Math.max(a,b), orl=Math.min(a,b);
+  if(orh<=orl) return null;
+  var span=adr/100*((orh+orl)/2);
+  return {orh:orh,orl:orl,span:span,
+    longFrom:Math.max(orh,orl+LO*span), longTo:orl+HI*span,
+    shortFrom:orh-HI*span, shortTo:Math.min(orl,orh-LO*span)};
+}
+
+/* ---------- cards ---------- */
+function makeCard(tk){
+  var s=S[tk];
+  var el=document.createElement('div');
+  el.className='card';
+  el.setAttribute('data-tk',tk);
+  el.innerHTML=
+    '<div class="top">'+
+      '<span class="tk">'+tk+'</span>'+
+      '<span class="meta num"></span>'+
+      '<span class="flagslot"></span>'+
+      '<span class="stamp"></span>'+
+      '<span class="status">'+
+        '<button type="button" data-act="in" data-t="'+tk+'">In</button>'+
+        '<button type="button" data-act="watch" data-t="'+tk+'">Watching</button>'+
+        '<button type="button" data-act="done" data-t="'+tk+'">Done</button>'+
+      '</span>'+
+    '</div>'+
+    '<div class="win">'+
+      '<div class="w"><div class="lab">Long between</div><div class="val num v-long"></div></div>'+
+      '<div class="w"><div class="lab">Short between</div><div class="val num v-short"></div></div>'+
+      '<div class="w"><div class="lab">Strike within</div><div class="val num v-strike"></div></div>'+
+    '</div>'+
+    '<div class="bar"><div class="zone" style="left:'+(LO*100)+'%;width:'+((HI-LO)*100)+'%"></div>'+
+      '<div class="tickmark" style="display:none"></div></div>'+
+    '<div class="barlabs"><span class="num l0">too early</span><span>tradeable</span><span class="num l1">spent</span></div>'+
+    '<div class="check">'+
+      '<div><label>Price now</label><input class="num" inputmode="decimal" data-t="'+tk+'" data-f="px" value="'+s.px+'" placeholder="&mdash;"></div>'+
+      '<div><label>Strike</label><input class="num" inputmode="decimal" data-t="'+tk+'" data-f="k" value="'+s.k+'" placeholder="&mdash;"></div>'+
+      '<div><label>Fill premium</label><input class="num" inputmode="decimal" data-t="'+tk+'" data-f="prem" value="'+s.prem+'" placeholder="0.45"></div>'+
+      '<div class="vslot"></div>'+
+      '<div class="stopline"></div>'+
+    '</div>';
+  return el;
+}
+
+function paint(tk){
+  var card=cardsEl.querySelector('[data-tk="'+tk+'"]'); if(!card) return;
+  var g=geom(tk); if(!g) return;
+  var s=S[tk], rv=parseFloat(s.rv);
+  var thin=!isNaN(rv)&&rv<1.5;
+  var st=s.status||'watch';
+
+  card.className='card'+(thin?' thin':'')+' st-'+st;
+  card.querySelector('.meta').textContent=f(g.orl)+'\u2013'+f(g.orh)+' \u00b7 1 ADR '+f(g.span);
+  card.querySelector('.flagslot').innerHTML=thin?'<span class="flag">RVOL '+f(rv,1)+' \u2014 not in play</span>':'';
+  card.querySelector('.stamp').textContent=s.stamp?('in at '+s.stamp+' ET'):'';
+
+  var lDead=g.longTo<=g.longFrom, sDead=g.shortTo<=g.shortFrom;
+  var vl=card.querySelector('.v-long'), vs=card.querySelector('.v-short');
+  vl.textContent=lDead?'range too wide':f(g.longFrom)+' \u2013 '+f(g.longTo);
+  vl.className='val num v-long'+(lDead?' dead':'');
+  vs.textContent=sDead?'range too wide':f(g.shortFrom)+' \u2013 '+f(g.shortTo);
+  vs.className='val num v-short'+(sDead?' dead':'');
+  card.querySelector('.v-strike').textContent='\u00b1'+f(g.span);
+
+  var btns=card.querySelectorAll('.status button');
+  for(var i=0;i<btns.length;i++){
+    btns[i].className=(btns[i].getAttribute('data-act')===st)?'on':'';
+  }
+  update(tk);
+}
+
+function update(tk){
+  var card=cardsEl.querySelector('[data-tk="'+tk+'"]'); if(!card) return;
+  var g=geom(tk); if(!g) return;
+  var s=S[tk], px=parseFloat(s.px), k=parseFloat(s.k), pr=parseFloat(s.prem);
+  var slot=card.querySelector('.vslot'), tick=card.querySelector('.tickmark');
+  var stopEl=card.querySelector('.stopline');
+  var l0=card.querySelector('.l0'), l1=card.querySelector('.l1');
+
+  stopEl.innerHTML=(pr>0)
+    ? 'Stop <b>'+f(pr*(1-STOP))+'</b><span class="sep">\u00b7</span>risk $'+(pr*500).toFixed(0)+
+      '<span class="sep">\u00b7</span>max loss $'+(pr*500*STOP).toFixed(0)
+    : '';
+
+  if(!px){ slot.innerHTML=''; tick.style.display='none';
+    l0.textContent='too early'; l1.textContent='spent'; return; }
+
+  var dir=null, cons=null;
+  if(px>g.orh){ dir='long'; cons=(px-g.orl)/g.span; }
+  else if(px<g.orl){ dir='short'; cons=(g.orh-px)/g.span; }
+
+  var origin=(dir==='short')?g.orh:g.orl;
+  l0.textContent=f(origin)+' \u00b7 too early';
+  l1.textContent=f(dir==='short'?origin-g.span:origin+g.span)+' \u00b7 spent';
+
+  if(dir===null){
+    slot.innerHTML='<span class="verdict fail">Wait</span><div class="why">still inside the opening range</div>';
+    tick.style.display='none'; return;
+  }
+  tick.style.display='';
+  tick.style.left='calc('+(Math.max(0,Math.min(1,cons))*100)+'% - 1px)';
+
+  var ratio=isNaN(k)?null:Math.abs(k-px)/g.span;
+  var bad=[];
+  if(cons<LO) bad.push('only '+Math.round(cons*100)+'% of the range used');
+  if(cons>HI) bad.push(Math.round(cons*100)+'% of the day already spent');
+  if(ratio!==null&&ratio>=1) bad.push('strike '+f(ratio)+' ADR away \u2014 unreachable');
+  slot.innerHTML=bad.length
+    ? '<span class="verdict fail">Skip</span><div class="why">'+bad.join(' \u00b7 ')+'</div>'
+    : '<span class="verdict pass">Clear '+dir+'</span>'+
+      '<div class="why" style="color:var(--muted)">'+Math.round(cons*100)+'% consumed'+
+      (ratio!==null?' \u00b7 strike '+f(ratio)+' ADR':'')+'</div>';
+}
+
+function syncCards(){
+  TICKERS.forEach(function(t){
+    var tk=t[0], g=geom(tk);
+    var card=cardsEl.querySelector('[data-tk="'+tk+'"]');
+    if(!g){ if(card) card.parentNode.removeChild(card); return; }
+    if(!card){ cardsEl.appendChild(makeCard(tk)); }
+    paint(tk);
+  });
+  applyOrder();
+}
+
+function applyOrder(){
+  var cards=cardsEl.children;
+  for(var i=0;i<cards.length;i++){
+    var tk=cards[i].getAttribute('data-tk');
+    var st=(S[tk]&&S[tk].status)||'watch';
+    cards[i].style.order=RANK[st]*100+i;
+  }
+}
+
+/* ---------- events ---------- */
+document.addEventListener('input',function(e){
+  var el=e.target;
+  if(!el.getAttribute) return;
+  var tk=el.getAttribute('data-t'), fl=el.getAttribute('data-f');
+  if(!tk||!fl) return;
+  S[tk][fl]=el.value;
+  if(fl==='px'||fl==='k'||fl==='prem') update(tk); else syncCards();
+  save();
+});
+
+cardsEl.addEventListener('click',function(e){
+  var b=e.target;
+  while(b&&b!==cardsEl&&!(b.getAttribute&&b.getAttribute('data-act'))) b=b.parentNode;
+  if(!b||b===cardsEl) return;
+  var tk=b.getAttribute('data-t'), act=b.getAttribute('data-act'), s=S[tk];
+  s.status=(s.status===act)?'watch':act;
+  if(s.status==='in'&&!s.stamp) s.stamp=nyClock();
+  if(s.status!=='in'&&s.status!=='done') s.stamp='';
+  paint(tk); applyOrder(); save();
+});
+
+document.getElementById('newday').addEventListener('click',function(){
+  if(!confirm('Clear today\u2019s ranges, prices and statuses? ADR percentages stay.')) return;
+  for(var tk in S){
+    S[tk].orh='';S[tk].orl='';S[tk].rv='';S[tk].px='';S[tk].k='';S[tk].prem='';
+    S[tk].status='watch';S[tk].stamp='';
+  }
+  buildRows(); cardsEl.innerHTML=''; syncCards();
+  copyBox.style.display='none';
+  save(); setNote('Cleared '+nyClock()+' ET');
+});
+
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['Opening range filter \u2014 '+nyDay()+', copied '+nyClock()+' ET'];
+  TICKERS.forEach(function(t){
+    var tk=t[0], s=S[tk];
+    if(s.orh===''&&s.orl==='') return;
+    var parts=[tk,'ADR '+s.adr+'%','OR '+s.orl+'-'+s.orh];
+    if(s.rv!=='') parts.push('RVOL '+s.rv);
+    if(s.px!=='') parts.push('px '+s.px);
+    if(s.k!=='') parts.push('strike '+s.k);
+    if(s.prem!=='') parts.push('prem '+s.prem);
+    parts.push(s.status==='in'?('IN'+(s.stamp?' '+s.stamp:'')):(s.status==='done'?'done':'watched, not taken'));
+    lines.push(parts.join(' | '));
+  });
+  var text=lines.join('\n');
+  var done=function(){ setNote('Copied '+nyClock()+' ET'); };
+  var fallback=function(){
+    copyBox.value=text; copyBox.style.display='block';
+    copyBox.focus(); copyBox.setSelectionRange(0,text.length);
+    setNote('Copy blocked here \u2014 the text is selected below.');
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done,fallback);
+  } else { fallback(); }
+});
+
+/* ---------- boot ---------- */
+load();
+buildRows();
+syncCards();
+</script>
+</body>
+</html>
